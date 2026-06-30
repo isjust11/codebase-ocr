@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+.DS_Store
+*.log
+# PaddleOCR tải model về thư mục này khi chạy local
+.paddleocr/
