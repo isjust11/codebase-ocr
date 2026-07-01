@@ -10,6 +10,8 @@ Worker Python xử lý OCR bất đồng bộ cho hệ thống (Phase 5 + 5b c�
 
 ## Kiến trúc
 
+> Chi tiết luồng dữ liệu end-to-end: [docs/DATA_FLOW.md](docs/DATA_FLOW.md)
+
 ```
 NestJS OcrModule --ocr.jobs--> RabbitMQ --consume--> [worker.py]
                                                         | render (pdf_renderer)
