@@ -51,6 +51,11 @@ class OcrResultPage(BaseModel):
     lines: List[OcrLine] = Field(default_factory=list)
     images: List[OcrAssetMessage] = Field(default_factory=list)
     tables: List[OcrAssetMessage] = Field(default_factory=list)
+    # Ảnh raster đầy đủ của trang (đúng pixel space đã dùng để OCR/tính bbox).
+    # Client hiển thị ảnh này thay vì tự render lại PDF để bbox luôn khớp
+    # chính xác 1:1, tránh lệch do khác biệt engine render (PyMuPDF vs pdfium).
+    pageImageUrl: Optional[str] = None
+    pageImageKey: Optional[str] = None
 
 
 class OcrResultMessage(BaseModel):

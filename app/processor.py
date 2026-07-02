@@ -7,16 +7,19 @@ Phát message theo tiến độ:
 
 from __future__ import annotations
 
+import io
 import logging
 import os
 import tempfile
 from typing import Callable, List
 from urllib.parse import urlparse
 
+from PIL import Image
+
 from .config import config
 from .image_extractor import ImageExtractor
 from .ocr_engine import OcrEngine
-from .pdf_renderer import DocumentRenderer
+from .pdf_renderer import DocumentRenderer, RenderedPage
 from .s3_client import S3Client
 from .schemas import OcrJobMessage, OcrResultMessage, OcrResultPage
 
@@ -92,6 +95,8 @@ class JobProcessor:
                         rp, renderer.doc, mode=mode
                     )
 
+                page_image_url, page_image_key = self._upload_page_image(rp)
+
                 buffer.append(
                     OcrResultPage(
                         page=page_no,
@@ -100,6 +105,8 @@ class JobProcessor:
                         lines=lines,
                         images=images,
                         tables=tables,
+                        pageImageUrl=page_image_url,
+                        pageImageKey=page_image_key,
                     )
                 )
                 processed += 1
@@ -126,3 +133,23 @@ class JobProcessor:
                 )
             )
             logger.info("Job #%s hoàn tất: %s trang.", job.jobId, total)
+
+    def _upload_page_image(self, rp: RenderedPage) -> tuple[str | None, str | None]:
+        """Upload ảnh raster đầy đủ của trang (dùng để OCR) lên S3.
+
+        Client dùng ảnh này để hiển thị preview thay vì tự render lại PDF,
+        đảm bảo bbox khớp tuyệt đối với vị trí hiển thị.
+        """
+        try:
+            buf = io.BytesIO()
+            Image.fromarray(rp.image).save(buf, format="JPEG", quality=85)
+            return self._s3.upload_bytes(
+                buf.getvalue(), ext="jpg", content_type="image/jpeg"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Upload ảnh trang %s lỗi (bỏ qua, client sẽ tự render): %s",
+                rp.page_number,
+                exc,
+            )
+            return None, None

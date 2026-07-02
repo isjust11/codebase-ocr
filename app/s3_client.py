@@ -72,6 +72,7 @@ class S3Client:
             Key=key,
             Body=data,
             ContentType=ctype,
+            ACL="public-read",
         )
         return self._public_url(key), key
 

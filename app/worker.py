@@ -42,6 +42,23 @@ logging.basicConfig(
 logger = logging.getLogger("ocr.worker")
 
 
+def _restore_logging() -> None:
+    """Khôi phục logging sau khi PaddleOCR khởi tạo.
+
+    PaddleOCR (show_log=False) chỉnh sửa root logger / disable logging toàn
+    cục, khiến toàn bộ log của worker sau warm-up biến mất — job chạy mà không
+    có bất kỳ dòng log nào, không thể debug. Gọi hàm này sau warm_up().
+    """
+    logging.disable(logging.NOTSET)
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if not root.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+
+
 class Worker:
     def __init__(self) -> None:
         self._engine = OcrEngine.instance()
@@ -57,6 +74,8 @@ class Worker:
         start_health_server(config.health_port, self._engine.is_ready)
         logger.info("Đang warm-up OCR engine...")
         self._engine.warm_up()
+        _restore_logging()
+        logger.info("Warm-up xong, logging đã khôi phục.")
 
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
