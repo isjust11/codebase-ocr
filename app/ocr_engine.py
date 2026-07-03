@@ -66,21 +66,20 @@ class OcrEngine:
             return self._readers[lang]
         from paddleocr import PaddleOCR  # import trễ để warm-up kiểm soát thời điểm
 
+        # ir_optim=False / enable_mkldnn=False: tránh SIGILL trên CPU thiếu AVX-512.
+        ocr_kwargs = dict(
+            use_angle_cls=True,
+            lang=lang,
+            use_gpu=config.use_gpu,
+            show_log=False,
+            ir_optim=False,
+            enable_mkldnn=False,
+        )
         try:
-            reader = PaddleOCR(
-                use_angle_cls=True,
-                lang=lang,
-                use_gpu=config.use_gpu,
-                show_log=False,
-            )
+            reader = PaddleOCR(**ocr_kwargs)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Không tạo được reader lang=%s (%s), fallback 'latin'", lang, exc)
-            reader = PaddleOCR(
-                use_angle_cls=True,
-                lang="latin",
-                use_gpu=config.use_gpu,
-                show_log=False,
-            )
+            reader = PaddleOCR(**{**ocr_kwargs, "lang": "latin"})
         self._readers[lang] = reader
         return reader
 
@@ -128,6 +127,8 @@ class OcrEngine:
             table=config.enable_table,
             ocr=False,
             show_log=False,
+            ir_optim=False,
+            enable_mkldnn=False,
         )
         logger.info("PP-Structure sẵn sàng (table=%s)", config.enable_table)
         return self._structure

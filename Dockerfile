@@ -2,7 +2,8 @@ FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    FLAGS_use_mkldnn=0
 
 # System deps cho PaddleOCR/OpenCV (libGL, glib), PyMuPDF và healthcheck (curl).
 RUN apt-get update && apt-get install -y --no-install-recommends \

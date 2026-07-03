@@ -1,4 +1,5 @@
 # Worker PaddleOCR — CPU. Pin để build ổn định.
+# SIGILL trên CPU thiếu AVX-512: tắt ir_optim trong ocr_engine.py + FLAGS_use_mkldnn=0.
 paddlepaddle==2.6.2
 paddleocr==2.7.3
 pika==1.3.2
