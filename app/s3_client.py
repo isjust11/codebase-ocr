@@ -55,6 +55,22 @@ class S3Client:
                     if chunk:
                         fh.write(chunk)
 
+    def download_bytes(
+        self, file_url: Optional[str], file_key: Optional[str]
+    ) -> bytes:
+        """Tải file nhỏ (ảnh asset) vào bộ nhớ."""
+        if file_url:
+            try:
+                with requests.get(file_url, timeout=120) as resp:
+                    resp.raise_for_status()
+                    return resp.content
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Tải bytes qua HTTP thất bại (%s), thử boto3...", exc)
+        if file_key:
+            obj = self._client.get_object(Bucket=self._bucket, Key=file_key)
+            return obj["Body"].read()
+        raise RuntimeError("Không tải được bytes: thiếu imageUrl/imageKey hợp lệ")
+
     # ── Upload ────────────────────────────────────────────────────────────
     def upload_bytes(
         self,

@@ -16,7 +16,7 @@ from typing import List, Optional
 
 import fitz  # PyMuPDF
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 logger = logging.getLogger("ocr.render")
 
@@ -30,6 +30,15 @@ class RenderedPage:
     width: int
     height: int
     fitz_page: Optional["fitz.Page"] = None  # chỉ có với PDF (để lấy ảnh embedded)
+    coord_scale: float = 1.0  # hệ số upscale tiền xử lý (bbox fitz * scale)
+
+
+def _open_image(path: str) -> Image.Image:
+    """Đọc ảnh và áp dụng EXIF Orientation (ảnh chụp camera thường lưu pixel ngang)."""
+    with open(path, "rb") as fh:
+        img = Image.open(io.BytesIO(fh.read()))
+        img.load()
+    return ImageOps.exif_transpose(img)
 
 
 def _pil_to_rgb_np(img: Image.Image) -> np.ndarray:
@@ -101,9 +110,7 @@ class DocumentRenderer:
         )
 
     def _render_image_file(self) -> RenderedPage:
-        with open(self._path, "rb") as fh:
-            img = Image.open(io.BytesIO(fh.read()))
-            img.load()
+        img = _open_image(self._path)
         arr = _pil_to_rgb_np(img)
         h, w = arr.shape[:2]
         return RenderedPage(page_number=1, image=arr, width=w, height=h, fitz_page=None)

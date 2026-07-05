@@ -105,9 +105,71 @@ class Config:
     min_asset_area_ratio: float = field(
         default_factory=lambda: _get_float("OCR_MIN_ASSET_AREA_RATIO", 0.01)
     )
+    # Bỏ ảnh/figure phủ gần hết trang (ảnh chụp bị nhận nhầm thành figure).
+    max_asset_area_ratio: float = field(
+        default_factory=lambda: _get_float("OCR_MAX_ASSET_AREA_RATIO", 0.85)
+    )
     # Ngưỡng IoU coi 2 bbox là trùng (khử ảnh embedded vs figure layout).
     dedup_iou: float = field(
         default_factory=lambda: _get_float("OCR_DEDUP_IOU", 0.6)
+    )
+
+    # ── Tiền xử lý ảnh trước OCR ───────────────────────────────────────────
+    preprocess_enabled: bool = field(
+        default_factory=lambda: _get_bool("OCR_PREPROCESS_ENABLED", True)
+    )
+    # Upscale nếu cạnh ngắn < ngưỡng này (px).
+    preprocess_min_short_edge: int = field(
+        default_factory=lambda: _get_int("OCR_PREPROCESS_MIN_SHORT_EDGE", 1600)
+    )
+    preprocess_max_scale: float = field(
+        default_factory=lambda: _get_float("OCR_PREPROCESS_MAX_SCALE", 2.5)
+    )
+    # Laplacian variance dưới ngưỡng → coi là mờ, chạy enhance.
+    preprocess_blur_threshold: float = field(
+        default_factory=lambda: _get_float("OCR_PREPROCESS_BLUR_THRESHOLD", 120.0)
+    )
+    preprocess_clahe_clip: float = field(
+        default_factory=lambda: _get_float("OCR_PREPROCESS_CLAHE_CLIP", 2.0)
+    )
+    preprocess_denoise_strength: int = field(
+        default_factory=lambda: _get_int("OCR_PREPROCESS_DENOISE_STRENGTH", 4)
+    )
+    # Cho phép upscale PDF (ảnh nhúng fitz cần nhân bbox thêm coord_scale).
+    preprocess_upscale_pdf: bool = field(
+        default_factory=lambda: _get_bool("OCR_PREPROCESS_UPSCALE_PDF", False)
+    )
+
+    # ── Chỉnh nghiêng / cong giấy (ảnh chụp camera) ─────────────────────────
+    rectify_enabled: bool = field(
+        default_factory=lambda: _get_bool("OCR_RECTIFY_ENABLED", True)
+    )
+    rectify_perspective: bool = field(
+        default_factory=lambda: _get_bool("OCR_RECTIFY_PERSPECTIVE", True)
+    )
+    rectify_deskew: bool = field(
+        default_factory=lambda: _get_bool("OCR_RECTIFY_DESKEW", True)
+    )
+    rectify_dewarp: bool = field(
+        default_factory=lambda: _get_bool("OCR_RECTIFY_DEWARP", True)
+    )
+    rectify_min_area_ratio: float = field(
+        default_factory=lambda: _get_float("OCR_RECTIFY_MIN_AREA_RATIO", 0.15)
+    )
+    rectify_deskew_min_angle: float = field(
+        default_factory=lambda: _get_float("OCR_RECTIFY_DESKEW_MIN_ANGLE", 0.4)
+    )
+    rectify_deskew_max_angle: float = field(
+        default_factory=lambda: _get_float("OCR_RECTIFY_DESKEW_MAX_ANGLE", 18.0)
+    )
+    rectify_dewarp_min_deviation: float = field(
+        default_factory=lambda: _get_float("OCR_RECTIFY_DEWARP_MIN_DEVIATION", 6.0)
+    )
+    rectify_dewarp_strength: float = field(
+        default_factory=lambda: _get_float("OCR_RECTIFY_DEWARP_STRENGTH", 0.85)
+    )
+    preprocess_rectify_pdf: bool = field(
+        default_factory=lambda: _get_bool("OCR_PREPROCESS_RECTIFY_PDF", False)
     )
 
     # ── Xử lý lỗi ─────────────────────────────────────────────────────────

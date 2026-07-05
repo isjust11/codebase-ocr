@@ -49,12 +49,6 @@ def _iou(a: Rect, b: Rect) -> float:
     return inter / union if union > 0 else 0.0
 
 
-def _encode_png(image: np.ndarray) -> bytes:
-    buf = io.BytesIO()
-    Image.fromarray(image).save(buf, format="PNG")
-    return buf.getvalue()
-
-
 def _clamp_rect(r: Rect, w: int, h: int) -> Rect:
     x1, y1, x2, y2 = r
     x1 = max(0.0, min(x1, w))
@@ -66,6 +60,22 @@ def _clamp_rect(r: Rect, w: int, h: int) -> Rect:
     if y2 < y1:
         y1, y2 = y2, y1
     return (x1, y1, x2, y2)
+
+
+def _encode_png(image: np.ndarray) -> bytes:
+    buf = io.BytesIO()
+    Image.fromarray(image).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _area_ratio(rect: Rect, page_area: float) -> float:
+    x1, y1, x2, y2 = rect
+    area = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    return area / page_area if page_area > 0 else 0.0
+
+
+def _is_full_page_asset(rect: Rect, page_area: float) -> bool:
+    return _area_ratio(rect, page_area) >= config.max_asset_area_ratio
 
 
 class ImageExtractor:
@@ -106,6 +116,7 @@ class ImageExtractor:
         out: List[OcrAssetMessage] = []
         if doc is None or page.fitz_page is None:
             return out
+        page_area = float(page.width * page.height) or 1.0
         zoom = config.render_dpi / 72.0
         try:
             xrefs = page.fitz_page.get_images(full=True)
@@ -131,13 +142,25 @@ class ImageExtractor:
                 continue
 
             for rect in rects:
+                s = page.coord_scale
                 px_rect = _clamp_rect(
-                    (rect.x0 * zoom, rect.y0 * zoom, rect.x1 * zoom, rect.y1 * zoom),
+                    (
+                        rect.x0 * zoom * s,
+                        rect.y0 * zoom * s,
+                        rect.x1 * zoom * s,
+                        rect.y1 * zoom * s,
+                    ),
                     page.width,
                     page.height,
                 )
                 area = (px_rect[2] - px_rect[0]) * (px_rect[3] - px_rect[1])
                 if area < min_area:
+                    continue
+                if _is_full_page_asset(px_rect, page_area):
+                    logger.debug(
+                        "Bỏ ảnh embedded phủ gần hết trang (%.0f%%)",
+                        _area_ratio(px_rect, page_area) * 100,
+                    )
                     continue
                 try:
                     url, key = self._s3.upload_bytes(img_bytes, ext=ext)
@@ -180,6 +203,13 @@ class ImageExtractor:
             )
             area = (rect[2] - rect[0]) * (rect[3] - rect[1])
             if area < min_area:
+                continue
+            page_area = float(page.width * page.height) or 1.0
+            if _is_full_page_asset(rect, page_area):
+                logger.debug(
+                    "Bỏ figure/table layout phủ gần hết trang (%.0f%%)",
+                    _area_ratio(rect, page_area) * 100,
+                )
                 continue
 
             # Khử trùng với ảnh embedded.

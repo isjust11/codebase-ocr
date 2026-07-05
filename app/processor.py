@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 from PIL import Image
 
 from .config import config
+from .image_preprocessor import preprocess_for_ocr
 from .image_extractor import ImageExtractor
 from .ocr_engine import OcrEngine
 from .pdf_renderer import DocumentRenderer, RenderedPage
@@ -87,6 +88,7 @@ class JobProcessor:
             processed = 0
             for page_no in pages:
                 rp = renderer.render_page(page_no)
+                rp = self._preprocess_page(rp)
                 lines = self._engine.ocr_page(rp.image, job.lang)
 
                 images, tables = [], []
@@ -133,6 +135,27 @@ class JobProcessor:
                 )
             )
             logger.info("Job #%s hoàn tất: %s trang.", job.jobId, total)
+
+    def _preprocess_page(self, rp: RenderedPage) -> RenderedPage:
+        """Chỉnh nghiêng/cong + enhance ảnh trang; cập nhật width/height."""
+        allow_upscale = rp.fitz_page is None or config.preprocess_upscale_pdf
+        allow_rectify = rp.fitz_page is None or config.preprocess_rectify_pdf
+        enhanced, scale = preprocess_for_ocr(
+            rp.image,
+            allow_upscale=allow_upscale,
+            allow_rectify=allow_rectify,
+        )
+        if enhanced is rp.image:
+            return rp
+        h, w = enhanced.shape[:2]
+        return RenderedPage(
+            page_number=rp.page_number,
+            image=enhanced,
+            width=w,
+            height=h,
+            fitz_page=rp.fitz_page,
+            coord_scale=scale if rp.fitz_page is not None else 1.0,
+        )
 
     def _upload_page_image(self, rp: RenderedPage) -> tuple[str | None, str | None]:
         """Upload ảnh raster đầy đủ của trang (dùng để OCR) lên S3.

@@ -79,9 +79,19 @@ class OcrExportLine(BaseModel):
     bbox: BBox
 
 
+class OcrExportAsset(BaseModel):
+    type: str = "image"
+    bbox: BBox
+    imageUrl: Optional[str] = None
+    imageKey: Optional[str] = None
+
+
 class OcrExportPage(BaseModel):
     page: int
+    width: int = 0
+    height: int = 0
     lines: List[OcrExportLine] = Field(default_factory=list)
+    assets: List[OcrExportAsset] = Field(default_factory=list)
 
 
 class OcrExportMessage(BaseModel):
@@ -91,9 +101,11 @@ class OcrExportMessage(BaseModel):
 
     jobId: int
     format: str = "pdf"
-    fileUrl: str
+    fileUrl: Optional[str] = None
     fileKey: Optional[str] = None
     lang: str = "vi"
+    # False (mặc định): PDF sạch — text + ảnh tách, không ảnh scan gốc.
+    includeSourceImage: bool = False
     pages: List[OcrExportPage] = Field(default_factory=list)
 
 

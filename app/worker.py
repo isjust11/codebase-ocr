@@ -198,12 +198,20 @@ class Worker:
             return
 
         logger.info("Nhận export #%s (%s)", msg.jobId, msg.format)
-        tmp = tempfile.NamedTemporaryFile(suffix=".src", delete=False)
-        tmp_path = tmp.name
-        tmp.close()
+        tmp_path: Optional[str] = None
         try:
-            self._s3.download(msg.fileUrl, msg.fileKey, tmp_path)
-            pdf_bytes = self._exporter.build(tmp_path, msg.pages)
+            if msg.includeSourceImage:
+                if not msg.fileUrl:
+                    raise ValueError(
+                        "fileUrl bắt buộc khi includeSourceImage=true"
+                    )
+                tmp = tempfile.NamedTemporaryFile(suffix=".src", delete=False)
+                tmp_path = tmp.name
+                tmp.close()
+                self._s3.download(msg.fileUrl, msg.fileKey, tmp_path)
+                pdf_bytes = self._exporter.build(tmp_path, msg.pages)
+            else:
+                pdf_bytes = self._exporter.build_text_only(msg.pages, s3=self._s3)
             url, key = self._s3.upload_bytes(
                 pdf_bytes,
                 ext="pdf",
@@ -224,10 +232,11 @@ class Worker:
                 )
             )
         finally:
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+            if tmp_path:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
             channel.basic_ack(delivery_tag=method.delivery_tag)
 
     def _publish_export_result(self, message: OcrExportResultMessage) -> None:
